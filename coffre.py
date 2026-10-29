@@ -174,7 +174,7 @@ class Coffre:
     # ----------- CORRECTION -----------
 
     # Ajoute un secret pour un utilisateur et enregistre cette action dans le journal.
-    def ajouter_secret(self, idUtilisateur, typeSecret, dateDepot, valeur):
+    def ajouter_secret(self, session, typeSecret, dateDepot, valeur):
 
         self.cursor.execute(
             '''
@@ -185,8 +185,8 @@ class Coffre:
             (
                 typeSecret,
                 dateDepot,
-                valeur,
-                idUtilisateur
+                valeur.encode().hex(),
+                session["matricule"]
             )
         )
 
@@ -200,11 +200,9 @@ class Coffre:
             ''',
             (
                 "Ajout",
-                idUtilisateur,
+                session["matricule"],
                 idSecret,
-                datetime.now().strftime(
-                    "%Y-%m-%d %H:%M:%S"
-                )
+                datetime.now().strftime("%Y-%m-%d %H:%M:%S")
             )
         )
 
@@ -215,7 +213,9 @@ class Coffre:
     # ----------- FIN CORRECTION -----------
 
     # Supprime un secret existant seulement s'il appartient bien à l'utilisateur indiqué.
-    def retirer_secret(self, idUtilisateur, idSecret):
+    def retirer_secret(self, session, idSecret):
+
+        matricule = session["matricule"]
 
         secret = self.cursor.execute(
             '''
@@ -224,13 +224,12 @@ class Coffre:
             WHERE idSecret = ?
             AND idUtilisateur = ?
             ''',
-            (idSecret, idUtilisateur)
+            (idSecret, matricule)
         ).fetchone()
 
         if not secret:
             raise DonneeInvalide(
-                f"Secret non trouvé avec l'ID {idSecret} "
-                f"pour l'utilisateur {idUtilisateur}"
+                f"Secret non trouvé avec l'ID {idSecret}"
             )
 
         self.cursor.execute(
@@ -246,7 +245,9 @@ class Coffre:
         self.conn.commit()
 
     # Affiche la liste des secrets d'un utilisateur sans révéler leurs valeurs.
-    def lister(self, idUtilisateur):
+    def lister(self, session):
+
+        matricule = session["matricule"]
 
         secrets = self.cursor.execute(
             '''
@@ -254,7 +255,7 @@ class Coffre:
             FROM secret
             WHERE idUtilisateur = ?
             ''',
-            (idUtilisateur,)
+            (matricule,)
         ).fetchall()
 
         return [
@@ -263,7 +264,13 @@ class Coffre:
         ]
 
     # Récupère la valeur d'un secret uniquement si l'utilisateur a bien accès à ce secret.
-    def reveler(self, idUtilisateur, idSecret):
+    def reveler(self, session, idSecret):
+
+        if not isinstance(session, dict):
+            raise AccesRefuse("Accès refusé")
+
+
+        matricule = session["matricule"]
 
         secret = self.cursor.execute(
             '''
@@ -272,24 +279,25 @@ class Coffre:
             WHERE idSecret = ?
             AND idUtilisateur = ?
             ''',
-            (idSecret, idUtilisateur)
+            (idSecret, matricule)
         ).fetchone()
 
         if not secret:
             raise AccesRefuse("Accès refusé")
 
-        return secret[0]
+        return bytes.fromhex(secret[0]).decode()
 
     # Affiche le journal des actions effectuées par un utilisateur.
-    def journal(self, idUtilisateur):
+    def journal(self, session):
+
+        if session["role"] != "responsable":
+            raise AccesRefuse("Accès refusé")
 
         operations = self.cursor.execute(
             '''
             SELECT typeOperation, date
             FROM operation
-            WHERE idUtilisateur = ?
-            ''',
-            (idUtilisateur,)
+            '''
         ).fetchall()
 
         return [

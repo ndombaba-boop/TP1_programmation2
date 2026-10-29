@@ -29,6 +29,7 @@ class MenuConsole:
                     matricule = input("Matricule : ")
                     motdepasse = input("Mot de passe : ")
                     role = input("Rôle (consultant/responsable) : ")
+
                     self.coffre.creer_compte(
                         matricule,
                         motdepasse,
@@ -47,8 +48,8 @@ class MenuConsole:
                         matricule,
                         motdepasse
                     )
-                    
-                    print(f"\nConnexion réussie : {session['matricule']} ")
+
+                    print(f"\nConnexion réussie : {session['matricule']}")
                     print(f"Rôle : {session['role']}")
 
                     self.menu_session(session)
@@ -107,17 +108,13 @@ class MenuConsole:
                         print("Type invalide.")
                         continue
 
-                    valeur = input(
-                        "Valeur du secret : "
-                    )
+                    valeur = input("Valeur du secret : ")
 
-                    identifiant = (
-                        self.coffre.ajouter_secret(
-                            session['matricule'],
-                            type_secret,
-                            "2026-10-25",
-                            valeur
-                        )
+                    identifiant = self.coffre.ajouter_secret(
+                        session,
+                        type_secret,
+                        "2026-10-25",
+                        valeur
                     )
 
                     print(
@@ -128,12 +125,10 @@ class MenuConsole:
                 elif choix == "2":
 
                     secrets = self.coffre.lister(
-                        session['matricule']
+                        session
                     )
 
-                    print(
-                        "\n=== MES SECRETS ==="
-                    )
+                    print("\n=== MES SECRETS ===")
 
                     if not secrets:
 
@@ -150,39 +145,25 @@ class MenuConsole:
                 elif choix == "3":
 
                     id_secret = int(
-                        input(
-                            "ID du secret : "
-                        )
+                        input("ID du secret : ")
                     )
 
                     valeur = self.coffre.reveler(
-                        session['matricule'],
+                        session,
                         id_secret
                     )
 
-                    print(
-                        "\n=== SECRET ==="
-                    )
-
+                    print("\n=== SECRET ===")
                     print(valeur)
 
                 # Affiche le journal des actions si l'utilisateur est responsable.
                 elif choix == "4":
 
-                    if session['role'] != "responsable":
-                        print(
-                            "Accès refusé : vous n'êtes pas responsable."
-                        )
-                        continue 
-
-                    
                     journal = self.coffre.journal(
-                        session['matricule']
+                        session
                     )
 
-                    print(
-                        "\n=== JOURNAL ==="
-                    )
+                    print("\n=== JOURNAL ===")
 
                     for ligne in journal:
                         print(ligne)
@@ -190,10 +171,7 @@ class MenuConsole:
                 # Ferme la session active et retourne au menu principal.
                 elif choix == "5":
 
-                    print(
-                        "Session fermée."
-                    )
-
+                    print("Session fermée.")
                     return
 
                 # Affiche un message si le choix est invalide.
